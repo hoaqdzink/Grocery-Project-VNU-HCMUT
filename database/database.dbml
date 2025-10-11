@@ -1,0 +1,230 @@
+Table User {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của người dùng
+  username text [unique, not null] // Tên đăng nhập, ví dụ: "john_doe"
+  password text [not null] // Mật khẩu đã được hash
+  email text [unique, not null] // Email đăng ký, ví dụ: "john@example.com"
+  firstname text [not null] // Tên, ví dụ: "John"
+  lastname text [not null] // Họ, ví dụ: "Doe"
+  gender text [note: 'MALE, FEMALE, OTHER'] // Giới tính
+  avatar text [note: 'URL to avatar image'] // URL ảnh đại diện
+  phone text [unique] // Số điện thoại, ví dụ: "+84901234567"
+  role_id uuid [ref: > Role.id, not null] // ID vai trò người dùng
+  is_active boolean [default: true] // Trạng thái hoạt động
+  email_verified boolean [default: false] // Email đã xác thực chưa
+  created_at timestamp [default: `now()`] // Thời gian tạo tài khoản
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+  last_login_at timestamp // Thời gian đăng nhập cuối
+}
+
+Table Address {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của địa chỉ
+  user_id uuid [ref: > User.id, not null] // ID người dùng sở hữu địa chỉ
+  home_number text // Số nhà, ví dụ: "123"
+  ward text // Phường/xã, ví dụ: "Phường 1"
+  street text // Đường, ví dụ: "Nguyễn Văn A"
+  city text // Thành phố, ví dụ: "TP. Hồ Chí Minh"
+  district text // Quận/huyện, ví dụ: "Quận 1"
+  postal_code text // Mã bưu điện, ví dụ: "700000"
+  is_default boolean [default: false] // Địa chỉ mặc định
+  is_active boolean [default: true] // Trạng thái hoạt động
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+}
+
+Table Category {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của danh mục
+  name text [not null] // Tên danh mục, ví dụ: "Giày thể thao", "Quần áo nam"
+  description text // Mô tả danh mục
+  parent_id uuid [ref: > Category.id] // ID danh mục cha (cho danh mục con)
+  is_active boolean [default: true] // Trạng thái hoạt động
+  display_order int [default: 0] // Thứ tự hiển thị
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+}
+
+Table Branch {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của thương hiệu
+  branch_name text [not null] // Tên thương hiệu, ví dụ: "Nike", "Adidas", "Uniqlo"
+  description text // Mô tả thương hiệu
+  logo_url text // URL logo thương hiệu
+  website_url text // Website chính thức của thương hiệu
+  is_active boolean [default: true] // Trạng thái hoạt động
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+}
+
+Table Products {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của sản phẩm
+  name text [not null] // Tên sản phẩm, ví dụ: "Nike Air Max 270"
+  description text // Mô tả chi tiết sản phẩm
+  unit text // Đơn vị tính, ví dụ: "piece", "kg", "liter"
+  category_id uuid [ref: > Category.id, not null] // ID danh mục sản phẩm
+  brand_id uuid [ref: > Branch.id, not null] // ID thương hiệu
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+  is_active boolean [default: true] // Trạng thái hoạt động của sản phẩm
+}
+
+Table ProductVariant {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của biến thể sản phẩm
+  product_id uuid [ref: > Product.id, not null] // ID sản phẩm gốc
+  size text // Kích thước, ví dụ: "S", "M", "L", "XL", "42", "43"
+  color text // Màu sắc, ví dụ: "Red", "Blue", "Black", "White"
+  price decimal(10,2) [not null] // Giá bán của biến thể này
+  sku text [unique, not null] // Mã SKU duy nhất, ví dụ: "NIKE-AM270-S-RED-001"
+  is_active boolean [default: true] // Trạng thái hoạt động của biến thể
+  weight decimal(8,3) // Trọng lượng (kg), ví dụ: 0.350
+  dimensions text // Kích thước sản phẩm, ví dụ: "30x20x10 cm"
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+}
+
+Table Inventory {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của bản ghi tồn kho
+  product_variant_id uuid [ref: > ProductVariant.id, unique, not null] // ID biến thể sản phẩm
+  quantity int [not null, default: 0] // Tổng số lượng tồn kho
+  reserved_quantity int [not null, default: 0] // Số lượng đã được đặt hàng (chưa thanh toán)
+  available_quantity int [not null, default: 0] // Số lượng có thể bán = quantity - reserved_quantity
+  min_stock_level int // Mức tồn kho tối thiểu để cảnh báo, ví dụ: 10
+  max_stock_level int // Mức tồn kho tối đa, ví dụ: 1000
+  last_update timestamp [default: `now()`] // Thời gian cập nhật cuối
+  last_restock_date timestamp // Ngày nhập hàng cuối cùng
+}
+
+Table ProductImage {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của hình ảnh
+  product_variant_id uuid [ref: > ProductVariant.id, not null] // ID biến thể sản phẩm
+  image_url text [not null] // URL hình ảnh, ví dụ: "https://cdn.example.com/nike-red-s.jpg"
+  alt_text text // Mô tả hình ảnh cho accessibility, ví dụ: "Nike Air Max 270 màu đỏ size S"
+  is_primary boolean [default: false] // Hình ảnh chính của sản phẩm
+  display_order int [default: 0] // Thứ tự hiển thị trong gallery
+  image_type text // Loại hình ảnh: "thumbnail", "gallery", "detail", "size_chart"
+  file_size bigint // Kích thước file (bytes), ví dụ: 2048576
+  width int // Chiều rộng ảnh (pixels), ví dụ: 800
+  height int // Chiều cao ảnh (pixels), ví dụ: 600
+  created_at timestamp [default: `now()`] // Thời gian tạo
+}
+
+Table Order {
+  orderId int [pk]
+  orderDate datetime
+  orderStatus text
+  totalAmount decimal
+  paymentID int
+  shippingId int
+  discountAmount decimal
+  userID int [ref: > User.userid]
+}
+
+Table Shipping {
+  shippingID int [pk]
+  orderID int [ref: > Order.orderId]
+  shipperID int
+  shippingDate datetime
+  estimatedDate datetime
+  deliveryStatus text
+  phone text
+  email text
+  address text
+  note text
+}
+
+Table OrderDetail {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của chi tiết đơn hàng
+  order_id uuid [ref: > Order.id, not null] // ID đơn hàng
+  product_variant_id uuid [ref: > ProductVariant.id, not null] // ID biến thể sản phẩm
+  product_id uuid [ref: > Product.id, not null] // ID sản phẩm (để dễ truy vấn)
+  quantity int [not null] // Số lượng đặt mua, ví dụ: 2
+  unit_price decimal(10,2) [not null] // Giá đơn vị tại thời điểm đặt hàng
+  subtotal decimal(10,2) [not null] // Tổng tiền = quantity * unit_price
+  discount_amount decimal(10,2) [default: 0] // Số tiền giảm giá cho item này
+  final_price decimal(10,2) [not null] // Giá cuối cùng = subtotal - discount_amount
+  created_at timestamp [default: `now()`] // Thời gian tạo
+}
+
+Table Payment {
+  paymentId int [pk]
+  orderID int [ref: > Order.orderId]
+  paymentDate datetime
+  paymentMethod text
+  amountPaid decimal
+  paymentStatus text
+}
+
+Table OrderHistory {
+  historyID int [pk]
+  orderID int [ref: > Order.orderId]
+  updatedDate datetime
+  previousStatus text
+  currentStatus text
+  updatedBy text
+  note text
+}
+
+Table Coupon {
+  couponID int [pk]
+  code text
+  discountType text
+  discountValue decimal
+  minOrderValue decimal
+  maxDiscount decimal
+  startDate datetime
+  endDate datetime
+  usageLimit int
+  usedCount int
+  isActive boolean
+}
+
+Table CouponUsage {
+  usageID int [pk]
+  couponID int [ref: > Coupon.couponID]
+  userID int
+  orderID int [ref: > Order.orderId]
+  usedDate datetime
+}
+
+Table Notification {
+  notificationID int [pk]
+  userID int [ref: > User.userid]
+  message text
+  type text
+  createdAt datetime
+  isRead boolean
+}
+
+Table Invoice {
+  invoiceID int [pk]
+  orderID int [ref: > Order.orderId]
+  userID int
+  totalAmount decimal
+  paymentMethod text
+  paymentStatus text
+  createdDate datetime
+}
+
+Table Role {
+  id uuid [pk, default: `gen_random_uuid()`] // ID duy nhất của vai trò
+  name text [not null] // Tên vai trò, ví dụ: "ADMIN", "CUSTOMER", "STAFF"
+  description text // Mô tả vai trò
+  permissions text // Danh sách quyền hạn (JSON), ví dụ: ["READ", "WRITE", "DELETE"]
+  is_active boolean [default: true] // Trạng thái hoạt động
+  created_at timestamp [default: `now()`] // Thời gian tạo
+  updated_at timestamp [default: `now()`] // Thời gian cập nhật cuối
+}
+
+Table FeedBack {
+  feedBackID int [pk]
+  userID int [ref: > User.userid]
+  subject text
+  status text
+  createAt datetime
+  updateAt datetime
+}
+Table FeedMessage {
+  messageID int [pk]
+  senderID int [ref: > User.userid]
+  feedBackID int [ref: > FeedBack.feedBackID]
+  message text
+  sentAt datetime
+}
+

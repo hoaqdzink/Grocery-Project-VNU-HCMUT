@@ -1,0 +1,132 @@
+# ==================== PROMETHEUS CONFIGURATION ====================
+# File cấu hình Prometheus cho hệ thống Grocery Store
+# Prometheus là công cụ thu thập và lưu trữ metrics từ các services
+
+# ==================== GLOBAL CONFIGURATION ====================
+# Cấu hình chung áp dụng cho toàn bộ Prometheus
+global:
+  scrape_interval: 15s                    # Khoảng thời gian thu thập metrics (15 giây)
+  evaluation_interval: 15s                # Khoảng thời gian đánh giá alerting rules (15 giây)
+
+# ==================== RULE FILES ====================
+# Danh sách các file chứa alerting rules (cảnh báo)
+# Hiện tại đang comment vì chưa có rules
+rule_files:
+  # - "first_rules.yml"                   # File rules đầu tiên (đã comment)
+  # - "second_rules.yml"                  # File rules thứ hai (đã comment)
+
+# ==================== SCRAPE CONFIGURATIONS ====================
+# Cấu hình các targets mà Prometheus sẽ thu thập metrics
+scrape_configs:
+  
+  # ==================== PROMETHEUS SELF-MONITORING ====================
+  # Prometheus tự monitor chính nó
+  - job_name: 'prometheus'                # Tên job để nhận diện
+    static_configs:
+      - targets: ['localhost:9090']       # Địa chỉ Prometheus server
+
+  # ==================== APPLICATION SERVICES ====================
+  # Các microservices của hệ thống Grocery Store
+  
+  # API Gateway - Cổng vào chính của hệ thống
+  - job_name: 'api-gateway'               # Tên job cho API Gateway
+    static_configs:
+      - targets: ['api-gateway:8080']     # Địa chỉ container API Gateway
+    metrics_path: '/actuator/prometheus'  # Endpoint cung cấp metrics (Spring Boot Actuator)
+    scrape_interval: 10s                  # Thu thập metrics mỗi 10 giây (nhanh hơn vì quan trọng)
+
+  # Product Service - Quản lý sản phẩm
+  - job_name: 'product-service'           # Tên job cho Product Service
+    static_configs:
+      - targets: ['product-service:8081'] # Địa chỉ container Product Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics từ Spring Boot Actuator
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # User Service - Quản lý người dùng
+  - job_name: 'user-service'              # Tên job cho User Service
+    static_configs:
+      - targets: ['user-service:8082']    # Địa chỉ container User Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # Cart Service - Quản lý giỏ hàng
+  - job_name: 'cart-service'              # Tên job cho Cart Service
+    static_configs:
+      - targets: ['cart-service:8083']    # Địa chỉ container Cart Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # Order Service - Quản lý đơn hàng
+  - job_name: 'order-service'             # Tên job cho Order Service
+    static_configs:
+      - targets: ['order-service:8084']   # Địa chỉ container Order Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # Payment Service - Xử lý thanh toán
+  - job_name: 'payment-service'           # Tên job cho Payment Service
+    static_configs:
+      - targets: ['payment-service:8085'] # Địa chỉ container Payment Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # Notification Service - Gửi thông báo
+  - job_name: 'notification-service'      # Tên job cho Notification Service
+    static_configs:
+      - targets: ['notification-service:8086'] # Địa chỉ container Notification Service
+    metrics_path: '/actuator/prometheus'  # Endpoint metrics
+    scrape_interval: 10s                  # Thu thập mỗi 10 giây
+
+  # ==================== DATABASE SERVICES ====================
+  # Các PostgreSQL databases (mỗi service có database riêng)
+  
+  # Product Database - Database cho Product Service
+  - job_name: 'postgres-product'          # Tên job cho PostgreSQL Product
+    static_configs:
+      - targets: ['postgres-product:5432'] # Địa chỉ container PostgreSQL Product
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây (chậm hơn vì ít thay đổi)
+
+  # User Database - Database cho User Service
+  - job_name: 'postgres-user'             # Tên job cho PostgreSQL User
+    static_configs:
+      - targets: ['postgres-user:5432']   # Địa chỉ container PostgreSQL User
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # Cart Database - Database cho Cart Service
+  - job_name: 'postgres-cart'             # Tên job cho PostgreSQL Cart
+    static_configs:
+      - targets: ['postgres-cart:5432']   # Địa chỉ container PostgreSQL Cart
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # Order Database - Database cho Order Service
+  - job_name: 'postgres-order'            # Tên job cho PostgreSQL Order
+    static_configs:
+      - targets: ['postgres-order:5432']  # Địa chỉ container PostgreSQL Order
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # Payment Database - Database cho Payment Service
+  - job_name: 'postgres-payment'          # Tên job cho PostgreSQL Payment
+    static_configs:
+      - targets: ['postgres-payment:5432'] # Địa chỉ container PostgreSQL Payment
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # Notification Database - Database cho Notification Service
+  - job_name: 'postgres-notification'     # Tên job cho PostgreSQL Notification
+    static_configs:
+      - targets: ['postgres-notification:5432'] # Địa chỉ container PostgreSQL Notification
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # ==================== INFRASTRUCTURE SERVICES ====================
+  # Các dịch vụ cơ sở hạ tầng
+  
+  # Redis - Cache và session storage
+  - job_name: 'redis'                     # Tên job cho Redis
+    static_configs:
+      - targets: ['redis:6379']           # Địa chỉ container Redis
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây
+
+  # Kafka - Message broker
+  - job_name: 'kafka'                     # Tên job cho Kafka
+    static_configs:
+      - targets: ['kafka:9092']           # Địa chỉ container Kafka
+    scrape_interval: 30s                  # Thu thập mỗi 30 giây

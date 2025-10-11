@@ -1,0 +1,27 @@
+# Test configuration
+spring:
+  application:
+    name: product-service-test
+  
+  # Use H2 in-memory database for testing
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  
+  # JPA Configuration for testing
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        enable_lazy_load_no_trans: false
+
+# Logging
+logging:
+  level:
+    com.vinhnh.grocery.product: DEBUG
+    org.springframework.web: WARN

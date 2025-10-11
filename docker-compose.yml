@@ -1,0 +1,209 @@
+# ==================== GROCERY STORE DOCKER COMPOSE ====================
+# File cấu hình Docker Compose cho hệ thống Grocery Store
+# Bao gồm: Infrastructure services (PostgreSQL, Kafka, Redis, Monitoring)
+# và Application services (API Gateway, Microservices)
+
+services:
+  # ==================== INFRASTRUCTURE SERVICES ====================
+  # Các dịch vụ cơ sở hạ tầng: Database, Message Broker, Cache, Monitoring
+  
+  # PostgreSQL cho Product Service
+  postgres-product:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-product
+    environment:
+      POSTGRES_DB: ${POSTGRES_PRODUCT_DB:-product_db}            # Database cho Product Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_PRODUCT_PORT:-5432}:5432"                    # Port PostgreSQL Product
+    volumes:
+      - postgres_product_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_PRODUCT_DB:-product_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL cho User Service
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-user
+    environment:
+      POSTGRES_DB: ${POSTGRES_USER_DB:-user_db}                  # Database cho User Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_USER_PORT:-5433}:5432"                       # Port PostgreSQL User
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_USER_DB:-user_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL cho Cart Service
+  postgres-cart:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-cart
+    environment:
+      POSTGRES_DB: ${POSTGRES_CART_DB:-cart_db}                  # Database cho Cart Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_CART_PORT:-5434}:5432"                       # Port PostgreSQL Cart
+    volumes:
+      - postgres_cart_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_CART_DB:-cart_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL cho Order Service
+  postgres-order:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-order
+    environment:
+      POSTGRES_DB: ${POSTGRES_ORDER_DB:-order_db}                # Database cho Order Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_ORDER_PORT:-5435}:5432"                      # Port PostgreSQL Order
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_ORDER_DB:-order_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL cho Payment Service
+  postgres-payment:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-payment
+    environment:
+      POSTGRES_DB: ${POSTGRES_PAYMENT_DB:-payment_db}            # Database cho Payment Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_PAYMENT_PORT:-5436}:5432"                    # Port PostgreSQL Payment
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_PAYMENT_DB:-payment_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # PostgreSQL cho Notification Service
+  postgres-notification:
+    image: postgres:15-alpine
+    container_name: grocery-postgres-notification
+    environment:
+      POSTGRES_DB: ${POSTGRES_NOTIFICATION_DB:-notification_db}  # Database cho Notification Service
+      POSTGRES_USER: ${POSTGRES_USER:-grocery_user}              # Tên người dùng database
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grocery_password}  # Mật khẩu database
+    ports:
+      - "${POSTGRES_NOTIFICATION_PORT:-5437}:5432"               # Port PostgreSQL Notification
+    volumes:
+      - postgres_notification_data:/var/lib/postgresql/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grocery_user} -d ${POSTGRES_NOTIFICATION_DB:-notification_db}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+  # Redis for caching and session management - Dịch vụ cache và quản lý session
+  redis:
+    image: redis:${REDIS_VERSION:-7-alpine}                       # Phiên bản Redis
+    container_name: grocery-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"                                # Port kết nối Redis
+    volumes:
+      - redis_data:/data
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+
+  # Prometheus for metrics collection - Dịch vụ thu thập metrics
+  prometheus:
+    image: prom/prometheus:${PROMETHEUS_VERSION:-latest}          # Phiên bản Prometheus
+    container_name: grocery-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"                           # Port giao diện Prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - grocery-network
+    restart: unless-stopped
+
+  # Grafana for visualization - Dịch vụ tạo dashboard và visualization
+  grafana:
+    image: grafana/grafana:${GRAFANA_VERSION:-latest}             # Phiên bản Grafana
+    container_name: grocery-grafana
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"                              # Port giao diện Grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}  # Mật khẩu admin Grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - grocery-network
+    restart: unless-stopped
+
+# ==================== NETWORKS ====================
+networks:
+  grocery-network:                    # Mạng nội bộ cho tất cả services
+    driver: bridge                    # Sử dụng bridge driver
+
+# ==================== VOLUMES ====================
+volumes:
+  # PostgreSQL Volumes - Mỗi service có volume riêng
+  postgres_product_data:              # Volume lưu trữ dữ liệu PostgreSQL Product
+  postgres_user_data:                 # Volume lưu trữ dữ liệu PostgreSQL User
+  postgres_cart_data:                 # Volume lưu trữ dữ liệu PostgreSQL Cart
+  postgres_order_data:                # Volume lưu trữ dữ liệu PostgreSQL Order
+  postgres_payment_data:              # Volume lưu trữ dữ liệu PostgreSQL Payment
+  postgres_notification_data:         # Volume lưu trữ dữ liệu PostgreSQL Notification
+  
+  # Infrastructure Volumes
+  redis_data:                         # Volume lưu trữ dữ liệu Redis
+  prometheus_data:                    # Volume lưu trữ metrics Prometheus
+  grafana_data:                       # Volume lưu trữ cấu hình Grafana

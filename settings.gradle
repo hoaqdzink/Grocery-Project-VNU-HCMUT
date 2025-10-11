@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        mavenCentral()
+        maven { url = 'https://repo.spring.io/snapshot' }
+        maven { url = 'https://repo.spring.io/milestone' }
+    }
+}
+
+rootProject.name = 'grocery'
+
+include 'api-gateway'
+include 'product-service'
+include 'user-service'
+include 'cart-service'
+include 'order-service'
+include 'payment-service'
+include 'notification-service'
+include 'common'

@@ -1,0 +1,49 @@
+# Product Service Configuration
+spring:
+  application:
+    name: product-service
+  profiles:
+    active: dev
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PRODUCT_PORT:5432}/${POSTGRES_PRODUCT_DB:product_db}
+    username: ${POSTGRES_USER:grocery_user}
+    password: ${POSTGRES_PASSWORD:grocery_password}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Ho_Chi_Minh
+
+server:
+  port: ${PRODUCT_SERVICE_PORT:8081}
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    filter: true
+    display-request-duration: true
+    show-extensions: true
+    show-common-extensions: true
+  show-actuator: false
+
+# Logging
+logging:
+  level:
+    com.vinhnh.grocery.product: DEBUG
+    org.hibernate.SQL: DEBUG
+
