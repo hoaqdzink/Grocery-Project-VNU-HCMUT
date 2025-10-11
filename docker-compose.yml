@@ -3,8 +3,6 @@
 # Bao gồm: Infrastructure services (PostgreSQL, Kafka, Redis, Monitoring)
 # và Application services (API Gateway, Microservices)
 
-version: '3.8'
-
 services:
   # ==================== INFRASTRUCTURE SERVICES ====================
   # Các dịch vụ cơ sở hạ tầng: Database, Message Broker, Cache, Monitoring
@@ -135,63 +133,6 @@ services:
       timeout: 10s
       retries: 5
 
-  # Zookeeper for Kafka - Dịch vụ quản lý cluster cho Kafka
-  zookeeper:
-    image: confluentinc/cp-zookeeper:${ZOOKEEPER_VERSION:-7.4.0}  # Phiên bản Zookeeper
-    container_name: grocery-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}       # Port kết nối Zookeeper
-      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}           # Thời gian tick (ms)
-    networks:
-      - grocery-network
-    restart: unless-stopped
-
-  # Kafka Message Broker - Dịch vụ message broker cho event-driven architecture
-  kafka:
-    image: confluentinc/cp-kafka:${KAFKA_VERSION:-7.4.0}          # Phiên bản Kafka
-    container_name: grocery-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "${KAFKA_PORT:-9092}:9092"                                # Port kết nối Kafka
-      - "${KAFKA_JMX_PORT:-9101}:9101"                            # Port JMX monitoring
-    environment:
-      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}                      # ID của broker
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:${ZOOKEEPER_CLIENT_PORT:-2181}  # Kết nối đến Zookeeper
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT  # Cấu hình bảo mật
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:${KAFKA_PORT:-9092}  # Danh sách listeners
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}  # Số bản sao cho offset topic
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:-1}  # Min ISR cho transaction log
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR:-1}  # Replication factor cho transaction log
-      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS:-0}  # Delay cho rebalance (ms)
-      KAFKA_JMX_PORT: ${KAFKA_JMX_PORT:-9101}                     # Port JMX
-      KAFKA_JMX_HOSTNAME: localhost                               # Hostname JMX
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-    networks:
-      - grocery-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # Kafka UI for monitoring - Giao diện web quản lý Kafka
-  kafka-ui:
-    image: provectuslabs/kafka-ui:${KAFKA_UI_VERSION:-latest}     # Phiên bản Kafka UI
-    container_name: grocery-kafka-ui
-    depends_on:
-      - kafka
-    ports:
-      - "${KAFKA_UI_PORT:-8080}:8080"                             # Port giao diện Kafka UI
-    environment:
-      KAFKA_CLUSTERS_0_NAME: ${KAFKA_CLUSTER_NAME:-local}         # Tên cluster Kafka
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092              # Bootstrap servers
-      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:${ZOOKEEPER_CLIENT_PORT:-2181}  # Kết nối Zookeeper
-    networks:
-      - grocery-network
-    restart: unless-stopped
 
   # Redis for caching and session management - Dịch vụ cache và quản lý session
   redis:
@@ -263,7 +204,6 @@ volumes:
   postgres_notification_data:         # Volume lưu trữ dữ liệu PostgreSQL Notification
   
   # Infrastructure Volumes
-  kafka_data:                         # Volume lưu trữ dữ liệu Kafka
   redis_data:                         # Volume lưu trữ dữ liệu Redis
   prometheus_data:                    # Volume lưu trữ metrics Prometheus
   grafana_data:                       # Volume lưu trữ cấu hình Grafana
