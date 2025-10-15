@@ -36,9 +36,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-gradle-
 
-    # 4. Build project để test
+    # 4. Build project để test (không phụ thuộc vào gradle wrapper jar)
     - name: 🏗️ Build project
-      run: ./gradlew build -x test
+      uses: gradle/gradle-build-action@v3
+      with:
+        gradle-version: 8.10.2
+        arguments: build -x test
 
     # 5. Build Docker images để test
     - name: 🐳 Build Docker images
