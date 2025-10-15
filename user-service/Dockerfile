@@ -1,7 +1,7 @@
 # ==================== USER SERVICE DOCKERFILE ====================
 # Multi-stage build cho User Service
 # Stage 1: Build application
-FROM openjdk:21-jdk-slim AS builder
+FROM eclipse-temurin:21-jdk AS builder
 
 # Set working directory
 WORKDIR /app
@@ -22,7 +22,7 @@ RUN chmod +x ./gradlew
 RUN ./gradlew clean build -x test
 
 # Stage 2: Runtime image
-FROM openjdk:21-jre-slim
+FROM eclipse-temurin:21-jre
 
 # Set working directory
 WORKDIR /app
