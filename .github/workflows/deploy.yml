@@ -1,0 +1,110 @@
+name: 🚀 Deploy Grocery Project to EC2 via Docker
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main  # chỉ chạy khi PR được merge vào main
+  workflow_dispatch:  # cho phép trigger manual
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Chỉ chạy khi PR được merge (không phải đóng)
+    if: github.event.pull_request.merged == true
+
+    steps:
+    # 1. Checkout source code
+    - name: 📥 Checkout source
+      uses: actions/checkout@v4
+
+    # 2. Setup Java để build project
+    - name: ☕ Setup Java 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    # 3. Cache Gradle dependencies
+    - name: 🔍 Cache Gradle dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          ${{ runner.os }}-gradle-
+
+    # 4. Build project để test
+    - name: 🏗️ Build project
+      run: ./gradlew build -x test
+
+    # 5. Build Docker images để test
+    - name: 🐳 Build Docker images
+      run: |
+        echo "Building Docker images for testing..."
+        docker build -t grocery-api-gateway:test ./api-gateway
+        docker build -t grocery-product-service:test ./product-service
+        docker build -t grocery-user-service:test ./user-service
+        docker build -t grocery-cart-service:test ./cart-service
+        docker build -t grocery-order-service:test ./order-service
+        docker build -t grocery-payment-service:test ./payment-service
+        docker build -t grocery-notification-service:test ./notification-service
+        echo "✅ Docker images built successfully!"
+
+    # 6. Copy project files to EC2
+    - name: 📤 Copy files to EC2
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "."
+        target: "/home/ubuntu/grocery-project"  # path trên EC2
+        strip_components: 1
+
+    # 7. SSH vào EC2 để deploy bằng docker-compose
+    - name: 🚀 Deploy on EC2
+      uses: appleboy/ssh-action@v1.2.0
+      with:
+        host: ${{ secrets.EC2_HOST }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          cd /home/ubuntu/grocery-project
+          echo "🔄 Starting deployment process..."
+          
+          # Stop existing containers
+          echo "🛑 Stopping existing containers..."
+          docker-compose down || true
+          
+          # Pull latest images and rebuild
+          echo "🏗️ Building and starting new containers..."
+          docker-compose up -d --build
+          
+          # Wait for services to be ready
+          echo "⏳ Waiting for services to start..."
+          sleep 30
+          
+          # Check if services are running
+          echo "🔍 Checking service health..."
+          docker-compose ps
+          
+          # Clean up unused images
+          echo "🧹 Cleaning up unused Docker images..."
+          docker image prune -f
+          
+          # Show logs for verification
+          echo "📋 Recent logs:"
+          docker-compose logs --tail=20
+          
+          echo "✅ Grocery Project deployed successfully!"
+          echo "🌐 Services should be available at:"
+          echo "   - API Gateway: http://${{ secrets.EC2_HOST }}:8080"
+          echo "   - Product Service: http://${{ secrets.EC2_HOST }}:8081"
+          echo "   - User Service: http://${{ secrets.EC2_HOST }}:8082"
+          echo "   - Cart Service: http://${{ secrets.EC2_HOST }}:8083"
+          echo "   - Order Service: http://${{ secrets.EC2_HOST }}:8084"
+          echo "   - Payment Service: http://${{ secrets.EC2_HOST }}:8085"
+          echo "   - Notification Service: http://${{ secrets.EC2_HOST }}:8086"

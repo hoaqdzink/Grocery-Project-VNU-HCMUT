@@ -1,6 +1,6 @@
 # 🛒 Grocery Project - VNU HCMUT
 
-Dự án hệ thống quản lý cửa hàng tạp hóa trực tuyến được phát triển bởi sinh viên Đại học Bách Khoa TP.HCM.
+Dự án hệ thống quản lý cửa hàng tạp hóa trực tuyến được phát triển bởi Nguyễn Hoàng Vinh sinh viên Đại học Bách Khoa TP.HCM.
 
 ## 📋 Tổng quan dự án
 
