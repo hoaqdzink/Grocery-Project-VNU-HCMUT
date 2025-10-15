@@ -188,6 +188,264 @@ services:
       - grocery-network
     restart: unless-stopped
 
+  # HashiCorp Vault for secrets management - Dịch vụ quản lý secrets
+  vault:
+    image: vault:${VAULT_VERSION:-latest}                         # Phiên bản Vault
+    container_name: grocery-vault
+    ports:
+      - "${VAULT_PORT:-8200}:8200"                                # Port giao diện Vault
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN:-grocery-root-token}  # Root token cho development
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200                    # Listen address
+      - VAULT_ADDR=http://0.0.0.0:8200                           # Vault address
+      - VAULT_API_ADDR=http://0.0.0.0:8200                       # API address
+    volumes:
+      - vault_data:/vault/data                                    # Volume lưu trữ dữ liệu Vault
+      - vault_logs:/vault/logs                                    # Volume lưu trữ logs
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    cap_add:
+      - IPC_LOCK                                                   # Cần thiết cho Vault
+
+  # Vault UI - Giao diện web cho Vault (optional)
+  vault-ui:
+    image: vault:${VAULT_VERSION:-latest}                         # Sử dụng cùng image với Vault
+    container_name: grocery-vault-ui
+    ports:
+      - "${VAULT_UI_PORT:-8201}:8200"                             # Port giao diện web Vault
+    environment:
+      - VAULT_ADDR=http://vault:8200                              # Kết nối đến Vault server
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN:-grocery-root-token}
+    depends_on:
+      vault:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    command: ["vault", "server", "-dev", "-dev-listen-address=0.0.0.0:8200", "-dev-root-token-id=${VAULT_ROOT_TOKEN:-grocery-root-token}"]
+
+  # ==================== APPLICATION SERVICES ====================
+  # Các dịch vụ ứng dụng: API Gateway và Microservices
+
+  # API Gateway - Cổng vào chính của hệ thống
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: grocery-api-gateway
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"                          # Port API Gateway
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-product:5432/${POSTGRES_PRODUCT_DB:-product_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      # Vault Configuration
+      - VAULT_ADDR=http://vault:8200                              # Vault server address
+      - VAULT_TOKEN=${VAULT_ROOT_TOKEN:-grocery-root-token}       # Vault authentication token
+      - VAULT_SECRET_PATH=secret/grocery/api-gateway              # Path to secrets in Vault
+    depends_on:
+      - postgres-product
+      - redis
+      - vault
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Product Service - Quản lý sản phẩm
+  product-service:
+    build:
+      context: ./product-service
+      dockerfile: Dockerfile
+    container_name: grocery-product-service
+    ports:
+      - "${PRODUCT_SERVICE_PORT:-8081}:8081"                      # Port Product Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-product:5432/${POSTGRES_PRODUCT_DB:-product_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-product:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # User Service - Quản lý người dùng
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    container_name: grocery-user-service
+    ports:
+      - "${USER_SERVICE_PORT:-8082}:8082"                         # Port User Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/${POSTGRES_USER_DB:-user_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Cart Service - Quản lý giỏ hàng
+  cart-service:
+    build:
+      context: ./cart-service
+      dockerfile: Dockerfile
+    container_name: grocery-cart-service
+    ports:
+      - "${CART_SERVICE_PORT:-8083}:8083"                         # Port Cart Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-cart:5432/${POSTGRES_CART_DB:-cart_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-cart:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Order Service - Quản lý đơn hàng
+  order-service:
+    build:
+      context: ./order-service
+      dockerfile: Dockerfile
+    container_name: grocery-order-service
+    ports:
+      - "${ORDER_SERVICE_PORT:-8084}:8084"                        # Port Order Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-order:5432/${POSTGRES_ORDER_DB:-order_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Payment Service - Xử lý thanh toán
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: grocery-payment-service
+    ports:
+      - "${PAYMENT_SERVICE_PORT:-8085}:8085"                      # Port Payment Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-payment:5432/${POSTGRES_PAYMENT_DB:-payment_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-payment:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Notification Service - Gửi thông báo
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: grocery-notification-service
+    ports:
+      - "${NOTIFICATION_SERVICE_PORT:-8086}:8086"                 # Port Notification Service
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-docker}         # Spring profile
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-notification:5432/${POSTGRES_NOTIFICATION_DB:-notification_db}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER:-grocery_user}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD:-grocery_password}
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+    depends_on:
+      postgres-notification:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - grocery-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 # ==================== NETWORKS ====================
 networks:
   grocery-network:                    # Mạng nội bộ cho tất cả services
@@ -207,3 +465,7 @@ volumes:
   redis_data:                         # Volume lưu trữ dữ liệu Redis
   prometheus_data:                    # Volume lưu trữ metrics Prometheus
   grafana_data:                       # Volume lưu trữ cấu hình Grafana
+  
+  # Vault Volumes
+  vault_data:                         # Volume lưu trữ dữ liệu Vault
+  vault_logs:                         # Volume lưu trữ logs Vault
