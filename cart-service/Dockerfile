@@ -1,7 +1,7 @@
 # ==================== CART SERVICE DOCKERFILE ====================
 # Multi-stage build cho Cart Service
 # Stage 1: Build application
-FROM gradle:8.10.2-jdk21 AS builder
+FROM gradle:8.10.2-jdk17 AS builder
 
 # Set working directory
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY src/ src/
 RUN gradle clean build -x test
 
 # Stage 2: Runtime image
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:17-jre
 
 # Set working directory
 WORKDIR /app
