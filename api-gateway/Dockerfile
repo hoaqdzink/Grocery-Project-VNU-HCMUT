@@ -1,25 +1,20 @@
 # ==================== API GATEWAY DOCKERFILE ====================
 # Multi-stage build cho API Gateway
 # Stage 1: Build application
-FROM eclipse-temurin:21-jdk AS builder
+FROM gradle:8.10.2-jdk21 AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Copy Gradle wrapper và build files
-COPY gradle/ gradle/
-COPY gradlew .
+# Copy file cấu hình Gradle
 COPY build.gradle .
 COPY settings.gradle .
 
 # Copy source code
 COPY src/ src/
 
-# Make gradlew executable
-RUN chmod +x ./gradlew
-
-# Build application
-RUN ./gradlew clean build -x test
+# Build application (không chạy test)
+RUN gradle clean build -x test
 
 # Stage 2: Runtime image
 FROM eclipse-temurin:21-jre
